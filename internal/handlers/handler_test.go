@@ -17,6 +17,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
@@ -45,7 +46,10 @@ func createMockNaverServer() *httptest.Server {
 }
 
 func TestMain(m *testing.M) {
-	godotenv.Load()
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		logger.Panic("TestMain", zap.String("err", err.Error()))
+	}
 	config.InitOauth2Config()
 
 	code := m.Run()
