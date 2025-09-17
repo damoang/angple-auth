@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/damoang/gongrok/internal/config"
-	"github.com/damoang/gongrok/internal/routes"
+	"github.com/damoang/angple-auth/internal/config"
+	"github.com/damoang/angple-auth/internal/routes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )

@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"github.com/damoang/gongrok/internal/handlers"
-	"github.com/damoang/gongrok/internal/middleware"
+	"github.com/damoang/angple-auth/internal/handlers"
+	"github.com/damoang/angple-auth/internal/middleware"
 	"github.com/gofiber/fiber/v2"
 )
 

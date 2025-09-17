@@ -3,7 +3,7 @@ package middleware
 import (
 	"os"
 
-	"github.com/damoang/gongrok/utils"
+	"github.com/damoang/angple-auth/utils"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"

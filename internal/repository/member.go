@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/damoang/gongrok/internal/models"
+	"github.com/damoang/angple-auth/internal/models"
 	"gorm.io/gorm"
 )
 
