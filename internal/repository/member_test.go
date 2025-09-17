@@ -2,22 +2,36 @@ package repository
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/damoang/gongrok/internal/database"
+	"github.com/damoang/gongrok/testdata"
 	"github.com/damoang/gongrok/utils"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
 )
 
 var logger = utils.GetLogger()
 
 func TestMain(m *testing.M) {
-	err := godotenv.Load("../../.env")
+	wd, _ := os.Getwd()
+	projectRoot := filepath.Join(wd, "../..")
+
+	err := godotenv.Load(filepath.Join(projectRoot, ".env"))
 	if err != nil {
-		logger.Panic("TestMain", zap.String("err", err.Error()))
+		logger.Panic("TestMain: failed to load dotenv", zap.Error(err))
 	}
+
+	c := testdata.SetupTestContainer(projectRoot)
+
+	defer func() {
+		if err := testcontainers.TerminateContainer(c); err != nil {
+			logger.Debug("TestMain: failed to terminate container", zap.Error(err))
+		}
+	}()
 
 	database.ConnectDB()
 

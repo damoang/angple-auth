@@ -7,16 +7,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/damoang/gongrok/internal/config"
+	"github.com/damoang/gongrok/internal/database"
 	"github.com/damoang/gongrok/internal/middleware"
 	"github.com/damoang/gongrok/internal/models"
+	"github.com/damoang/gongrok/testdata"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -46,11 +50,24 @@ func createMockNaverServer() *httptest.Server {
 }
 
 func TestMain(m *testing.M) {
-	err := godotenv.Load("../../.env")
+	wd, _ := os.Getwd()
+	projectRoot := filepath.Join(wd, "../..")
+
+	err := godotenv.Load(filepath.Join(projectRoot, ".env"))
 	if err != nil {
-		logger.Panic("TestMain", zap.String("err", err.Error()))
+		logger.Panic("TestMain: failed to load dotenv", zap.Error(err))
 	}
 	config.InitOauth2Config()
+
+	c := testdata.SetupTestContainer(projectRoot)
+
+	defer func() {
+		if err := testcontainers.TerminateContainer(c); err != nil {
+			logger.Debug("TestMain: failed to terminate container", zap.Error(err))
+		}
+	}()
+
+	database.ConnectDB()
 
 	code := m.Run()
 
@@ -128,13 +145,14 @@ func TestAuthCallback(t *testing.T) {
 }
 
 func TestAuthVerifyOk(t *testing.T) {
+
 	app := prepareAuthRouter("get", "/:provider/verify", middleware.Protected(), AuthVerify)
 
 	req := httptest.NewRequest("GET", "/auth/naver/verify", nil)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
-			"email": "mock_user@naver.com",
+			"email": "test1@test1111.com",
 			"exp":   jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
 			"iat":   jwt.NewNumericDate(time.Now()),
 		},
@@ -150,7 +168,7 @@ func TestAuthVerifyOk(t *testing.T) {
 	t.Logf("headers : %v", resp.Header)
 	memberId := resp.Header.Get("X-Member-Id")
 	t.Logf("memberId : %v", memberId)
-	assert.Equal(t, "member_id", memberId)
+	assert.Equal(t, "test1", memberId)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "response code must be 200")
 }

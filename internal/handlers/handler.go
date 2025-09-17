@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 
 	"github.com/damoang/gongrok/internal/config"
+	"github.com/damoang/gongrok/internal/database"
 	"github.com/damoang/gongrok/internal/models"
+	"github.com/damoang/gongrok/internal/repository"
 	"github.com/damoang/gongrok/utils"
 	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/fiber/v2"
@@ -112,9 +114,10 @@ func AuthCallback(c *fiber.Ctx) error {
 }
 
 func getMemberID(email string) string {
-	// TODO : query DB to get member id with email
+	// query DB to get member id with email
+	repo := repository.NewMemberRepository(database.DBConn)
 
-	return "member_id"
+	return repo.GetMember(email).Id
 }
 
 func AuthVerify(c *fiber.Ctx) error {
