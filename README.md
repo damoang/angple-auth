@@ -12,6 +12,7 @@ go run cmd/main.go
 > [!NOTE]
 > [Standard Go Project Layout](https://github.com/golang-standards/project-layout)
 
+```
  /
  ├── api/
  │   └── openapi.yaml        # API 명세서 (Swagger/OpenAPI)
@@ -26,4 +27,5 @@ go run cmd/main.go
  │   └── models/             # 핵심 데이터 구조 (Structs)
  ├── configs/                # 설정 파일 템플릿이나 기본 설정들
  ├── utils/                  # 공통 유틸리티 함수 모음
- └── test/                   # 테스트
+ └── testdata/               # 테스트 데이터
+```
