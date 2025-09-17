@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  build:
+  tests:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
@@ -19,7 +19,7 @@ jobs:
         go-version: '1.24'
 
     - name: Install dependencies
-      run: go mod download
+      run: go mod tidy
 
     - name: Test
       run: |

@@ -3,8 +3,8 @@ package database
 import (
 	"os"
 
-	// "github.com/damoang/gongrok/internal/models"
-	"github.com/damoang/gongrok/utils"
+	// "github.com/damoang/angple-auth/internal/models"
+	"github.com/damoang/angple-auth/utils"
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

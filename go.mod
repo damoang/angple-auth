@@ -1,4 +1,4 @@
-module github.com/damoang/gongrok
+module github.com/damoang/angple-auth
 
 go 1.24
 

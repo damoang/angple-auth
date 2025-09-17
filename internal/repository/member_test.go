@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/damoang/gongrok/internal/database"
-	"github.com/damoang/gongrok/testdata"
-	"github.com/damoang/gongrok/utils"
+	"github.com/damoang/angple-auth/internal/database"
+	"github.com/damoang/angple-auth/testdata"
+	"github.com/damoang/angple-auth/utils"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
