@@ -22,4 +22,6 @@ jobs:
       run: go mod download
 
     - name: Test
-      run: go test -v ./...
+      run: |
+        cp .env.sample .env
+        go test -v ./...
