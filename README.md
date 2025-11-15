@@ -1,10 +1,17 @@
-# Damoang Go Backend 
+# Angple Auth
 
 다모앙 차세대를 위한 [gofiber](https://github.com/gofiber/fiber) 기반 Auth 서버입니다.
+
+angple-auth 는 gnuboard 기반의 **ang-gnu** 에서 social login 을 분리하기 위한 프로젝트입니다.
 
 # Quick start
 ```bash
 go run cmd/main.go
+```
+
+# Test
+```bash
+go test -v ./...
 ```
 
 # Project Structure

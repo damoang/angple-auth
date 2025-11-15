@@ -16,6 +16,7 @@ import (
 	"github.com/damoang/angple-auth/internal/middleware"
 	"github.com/damoang/angple-auth/internal/models"
 	"github.com/damoang/angple-auth/testdata"
+	"github.com/damoang/angple-auth/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
@@ -57,7 +58,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		logger.Panic("TestMain: failed to load dotenv", zap.Error(err))
 	}
-	config.InitOauth2Config()
+	utils.InitAppEnv()
+
+	config.InitOauth2Configs()
 
 	c := testdata.SetupTestContainer(projectRoot)
 
@@ -107,7 +110,7 @@ func TestAuthCallback(t *testing.T) {
 	server := createMockNaverServer()
 	defer server.Close()
 
-	providerConf := config.GetOauth2Conf()
+	providerConf := config.GetOauth2Conf("naver")
 	conf := providerConf.Oauth2Conf
 	originalEndpoint := conf.Endpoint
 	originalProfileURL := providerConf.ProfileURL
@@ -146,9 +149,9 @@ func TestAuthCallback(t *testing.T) {
 
 func TestAuthVerifyOk(t *testing.T) {
 
-	app := prepareAuthRouter("get", "/:provider/verify", middleware.Protected(), AuthVerify)
+	app := prepareAuthRouter("get", "/verify", middleware.Protected(), AuthVerify)
 
-	req := httptest.NewRequest("GET", "/auth/naver/verify", nil)
+	req := httptest.NewRequest("GET", "/auth/verify", nil)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
@@ -166,10 +169,13 @@ func TestAuthVerifyOk(t *testing.T) {
 	defer resp.Body.Close()
 
 	t.Logf("headers : %v", resp.Header)
-	memberId := resp.Header.Get("X-Member-Id")
+	memberId := resp.Header.Get("X-Auth-Member-Id")
 	t.Logf("memberId : %v", memberId)
 	assert.Equal(t, "test1", memberId)
 
+	authenticated := resp.Header.Get("X-Auth-Authenticated")
+	t.Logf("authenticated : %v", authenticated)
+	assert.Equal(t, "1", authenticated, "X-Auth-Authenticated header must be 1")
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "response code must be 200")
 }
 
@@ -185,7 +191,8 @@ func TestAuthVerifyUnauthorized(t *testing.T) {
 
 		t.Logf("resp: %v", resp)
 
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "response code must be 400")
+		assert.Equal(t, "0", resp.Header.Get("X-Auth-Authenticated"), "X-Auth-Authenticated header must be 0")
+		assert.Equal(t, http.StatusOK, resp.StatusCode, "response code must be 200")
 	})
 
 	t.Run("wrongToken", func(t *testing.T) {
@@ -197,6 +204,7 @@ func TestAuthVerifyUnauthorized(t *testing.T) {
 		defer resp.Body.Close()
 
 		t.Logf("resp: %v", resp)
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "response code must be 401")
+		assert.Equal(t, "0", resp.Header.Get("X-Auth-Authenticated"), "X-Auth-Authenticated header must be 0")
+		assert.Equal(t, http.StatusOK, resp.StatusCode, "response code must be 200")
 	})
 }

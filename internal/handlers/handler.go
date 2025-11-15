@@ -21,6 +21,9 @@ import (
 var logger = utils.GetLogger()
 
 func Auth(c *fiber.Ctx) error {
+	provider := c.Params("provider")
+	logger.Debug("Auth", zap.String("provider", provider))
+
 	returnToUrl := c.Query("url", "/")
 	logger.Debug("Auth", zap.String("returnToUrl", returnToUrl))
 
@@ -37,13 +40,14 @@ func Auth(c *fiber.Ctx) error {
 
 	stateBase64 := base64.URLEncoding.EncodeToString(stateJson)
 
-	conf := config.GetOauth2Conf().Oauth2Conf
+	conf := config.GetOauth2Conf(provider).Oauth2Conf
 	url := conf.AuthCodeURL(stateBase64)
 	logger.Debug("Auth", zap.String("RedirectURL", url))
 	return c.Redirect(url)
 }
 
 func AuthCallback(c *fiber.Ctx) error {
+	provider := c.Params("provider")
 	stateBase64 := c.FormValue("state")
 
 	stateJson, err := base64.URLEncoding.DecodeString(stateBase64)
@@ -61,7 +65,7 @@ func AuthCallback(c *fiber.Ctx) error {
 	code := c.FormValue("code")
 	logger.Debug("AuthCallback", zap.String("code", code))
 
-	providerConf := config.GetOauth2Conf()
+	providerConf := config.GetOauth2Conf(provider)
 	conf := providerConf.Oauth2Conf
 	logger.Debug("AuthCallback", zap.Any("endpoint", conf.Endpoint))
 	naverToken, err := conf.Exchange(c.Context(), code)
@@ -103,6 +107,7 @@ func AuthCallback(c *fiber.Ctx) error {
 
 	logger.Debug("AuthCallback", zap.String("jwtToken", jwtToken))
 	cookie := new(fiber.Cookie)
+	// FIXME : domain
 	cookie.Domain = "localhost"
 	cookie.Name = "angjwt"
 	cookie.Value = jwtToken
@@ -129,7 +134,8 @@ func AuthVerify(c *fiber.Ctx) error {
 	logger.Debug("auth verify", zap.Any("claims", claims))
 	email := claims["email"].(string)
 
-	c.Set("X-Member-Id", getMemberID(email))
+	c.Set("X-Auth-Authenticated", "1")
+	c.Set("X-Auth-Member-Id", getMemberID(email))
 
 	return c.SendStatus(fiber.StatusOK)
 }

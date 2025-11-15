@@ -2,7 +2,9 @@ package main
 
 import (
 	"github.com/damoang/angple-auth/internal/config"
+	"github.com/damoang/angple-auth/internal/database"
 	"github.com/damoang/angple-auth/internal/routes"
+	"github.com/damoang/angple-auth/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
@@ -10,9 +12,13 @@ import (
 func main() {
 	godotenv.Load()
 
-	app := fiber.New()
+	utils.InitAppEnv()
 
-	config.InitOauth2Config()
+	config.InitOauth2Configs()
+
+	database.ConnectDB()
+
+	app := fiber.New()
 
 	routes.SetupRoutes(app)
 
