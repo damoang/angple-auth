@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/damoang/angple-auth/internal/models"
 	"github.com/damoang/angple-auth/internal/repository"
 	"github.com/damoang/angple-auth/utils"
-	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
@@ -21,12 +21,13 @@ import (
 var logger = utils.GetLogger()
 
 func Auth(c *fiber.Ctx) error {
-	provider := c.Params("provider")
-	logger.Debug("Auth", zap.String("provider", provider))
+	providerName := c.Params("provider")
+	logger.Debug("Auth", zap.String("provider", providerName))
 
 	returnToUrl := c.Query("url", "/")
 	logger.Debug("Auth", zap.String("returnToUrl", returnToUrl))
 
+	// FIXME : CSRF token and ReturnTo URL
 	state := models.AuthState{
 		CSRFToken: "random_string",
 		ReturnTo:  "http://localhost/plugin/social/social_login_callback.php",
@@ -40,14 +41,14 @@ func Auth(c *fiber.Ctx) error {
 
 	stateBase64 := base64.URLEncoding.EncodeToString(stateJson)
 
-	conf := config.GetOauth2Conf(provider).Oauth2Conf
+	conf := config.GetProvider(providerName).GetOauth2Conf()
 	url := conf.AuthCodeURL(stateBase64)
 	logger.Debug("Auth", zap.String("RedirectURL", url))
 	return c.Redirect(url)
 }
 
 func AuthCallback(c *fiber.Ctx) error {
-	provider := c.Params("provider")
+	providerName := c.Params("provider")
 	stateBase64 := c.FormValue("state")
 
 	stateJson, err := base64.URLEncoding.DecodeString(stateBase64)
@@ -65,36 +66,27 @@ func AuthCallback(c *fiber.Ctx) error {
 	code := c.FormValue("code")
 	logger.Debug("AuthCallback", zap.String("code", code))
 
-	providerConf := config.GetOauth2Conf(provider)
-	conf := providerConf.Oauth2Conf
+	provider := config.GetProvider(providerName)
+	conf := provider.GetOauth2Conf()
+
 	logger.Debug("AuthCallback", zap.Any("endpoint", conf.Endpoint))
-	naverToken, err := conf.Exchange(c.Context(), code)
+	providerToken, err := conf.Exchange(c.Context(), code)
 	if err != nil {
 		logger.Debug("AuthCallback", zap.String("err", err.Error()))
 		return c.Status(fiber.StatusInternalServerError).SendString("Authentication failed " + err.Error())
 	}
 
-	logger.Debug("AuthCallback", zap.Any("naverToken", naverToken))
+	logger.Debug("AuthCallback", zap.Any(fmt.Sprintf("providerToken(%v)", providerName), providerToken))
 
-	logger.Debug("AuthCallback", zap.String("profileURL", providerConf.ProfileURL))
-	var naverProfileResponse models.NaverProfileResponse
-
-	client := resty.New()
-	profileResp, err := client.R().
-		SetAuthToken(naverToken.AccessToken).
-		SetResult(&naverProfileResponse).
-		Get(providerConf.ProfileURL)
-
+	profileResp, err := provider.FetchProfile(providerToken.AccessToken)
+	logger.Debug("AuthCallback", zap.Any("profileResp", profileResp))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Get profile failed " + err.Error())
 	}
 
-	logger.Debug("AuthCallback", zap.Any("profileResp", profileResp))
-	logger.Debug("AuthCallback", zap.Any("naverProfileResponse", naverProfileResponse))
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
-			"email": naverProfileResponse.Response.Email,
+			"email": profileResp.Email,
 			"exp":   jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
 			"iat":   jwt.NewNumericDate(time.Now()),
 		},
@@ -127,11 +119,11 @@ func getMemberID(email string) string {
 
 func AuthVerify(c *fiber.Ctx) error {
 	angJwt := c.Cookies("angjwt")
-	logger.Debug("auth verify", zap.String("angJWT", angJwt))
+	logger.Debug("AuthVerify", zap.String("angJWT", angJwt))
 
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
-	logger.Debug("auth verify", zap.Any("claims", claims))
+	logger.Debug("AuthVerify", zap.Any("claims", claims))
 	email := claims["email"].(string)
 
 	c.Set("X-Auth-Authenticated", "1")

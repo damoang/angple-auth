@@ -14,7 +14,7 @@ func main() {
 
 	utils.InitAppEnv()
 
-	config.InitOauth2Configs()
+	config.InitProviders()
 
 	database.ConnectDB()
 

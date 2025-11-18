@@ -1,14 +1,9 @@
 package models
 
-type NaverProfileResponse struct {
-	ResultCode string       `json:"resultcode"`
-	Message    string       `json:"message"`
-	Response   NaverProfile `json:"response"`
-}
-
-type NaverProfile struct {
+type UnifiedProfile struct {
+	Provider string `json:"provider"`
 	ID       string `json:"id"`
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Nickname string `json:"nickname"`
+	Email    string `json:"email,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Picture  string `json:"picture,omitempty"`
 }

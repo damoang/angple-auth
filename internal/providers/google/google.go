@@ -1,8 +1,6 @@
-package naver
+package google
 
 import (
-	"errors"
-
 	"github.com/damoang/angple-auth/internal/models"
 	"github.com/damoang/angple-auth/internal/providers"
 	"github.com/damoang/angple-auth/utils"
@@ -13,29 +11,28 @@ import (
 )
 
 const (
-	NAVER_CLIENT_ID     string = "NAVER_CLIENT_ID"
-	NAVER_CLIENT_SECRET string = "NAVER_CLIENT_SECRET"
-	NAVER_REDIRECT_URL  string = "NAVER_REDIRECT_URL"
+	GOOGLE_CLIENT_ID     string = "GOOGLE_CLIENT_ID"
+	GOOGLE_CLIENT_SECRET string = "GOOGLE_CLIENT_SECRET"
+	GOOGLE_REDIRECT_URL  string = "GOOGLE_REDIRECT_URL"
 
-	PROFILE_URL string = "https://openapi.naver.com/v1/nid/me"
+	PROFILE_URL string = "https://www.googleapis.com/oauth2/v2/userinfo"
 )
 
 type provider struct {
 	oauth2Conf      *oauth2.Config
 	profileEndpoint *providers.ProfileEndpoint
-	profile         *NaverProfile
+	profile         *GoogleProfile
 }
 
-type NaverProfile struct {
-	ResultCode string `json:"resultcode"`
-	Message    string `json:"message"`
-	Response   struct {
-		ID           string `json:"id"`
-		Email        string `json:"email"`
-		Name         string `json:"name"`
-		Nickname     string `json:"nickname"`
-		ProfileImage string `json:"profile_image"`
-	} `json:"response"`
+type GoogleProfile struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string `json:"picture"`
+	Locale        string `json:"locale"`
 }
 
 var logger = utils.GetLogger()
@@ -45,20 +42,20 @@ var profileEndpoint = providers.ProfileEndpoint{
 
 func New() providers.Provider {
 	oauth2Conf := &oauth2.Config{
-		ClientID:     providers.GetClientID(NAVER_CLIENT_ID),
-		ClientSecret: providers.GetClientSecret(NAVER_CLIENT_SECRET),
-		RedirectURL:  providers.GetRedirectURL(NAVER_REDIRECT_URL),
+		ClientID:     providers.GetClientID(GOOGLE_CLIENT_ID),
+		ClientSecret: providers.GetClientSecret(GOOGLE_CLIENT_SECRET),
+		RedirectURL:  providers.GetRedirectURL(GOOGLE_REDIRECT_URL),
 		Scopes: []string{
-			"profile",
-			"email",
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile",
 		}, // you can use other scopes to get more data
-		Endpoint: endpoints.Naver,
+		Endpoint: endpoints.Google,
 	}
 
 	return &provider{
 		oauth2Conf:      oauth2Conf,
 		profileEndpoint: &profileEndpoint,
-		profile:         new(NaverProfile),
+		profile:         new(GoogleProfile),
 	}
 }
 
@@ -81,21 +78,17 @@ func (p *provider) FetchProfile(accessToken string) (*models.UnifiedProfile, err
 		Get(p.GetProfileEndpoint().ProfileURL)
 
 	logger.Debug("FetchProfile", zap.Any("profileResp", response))
-	logger.Debug("FetchProfile", zap.Any("naverProfileResponse", p.profile))
+	logger.Debug("FetchProfile", zap.Any("googleProfileResponse", p.profile))
 	if err != nil {
 		return nil, err
 	}
 
 	profile := &models.UnifiedProfile{
-		Provider: "naver",
-		ID:       p.profile.Response.ID,
-		Email:    p.profile.Response.Email,
-		Name:     p.profile.Response.Name,
-		Picture:  p.profile.Response.ProfileImage,
-	}
-
-	if p.profile.ResultCode != "00" {
-		return profile, errors.New(p.profile.Message)
+		Provider: "google",
+		ID:       p.profile.ID,
+		Email:    p.profile.Email,
+		Name:     p.profile.Name,
+		Picture:  p.profile.Picture,
 	}
 
 	return profile, err
