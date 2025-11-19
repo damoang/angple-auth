@@ -17,3 +17,19 @@ func IsDev() bool {
 func IsProd() bool {
 	return mode == "prod"
 }
+
+func GetHostname() string {
+	if IsDev() {
+		return os.Getenv("DEV_HOSTNAME")
+	}
+
+	return os.Getenv("HOSTNAME")
+}
+
+func GetCookieDomain() string {
+	if IsDev() {
+		return os.Getenv("DEV_COOKIE_DOMAIN")
+	}
+
+	return os.Getenv("COOKIE_DOMAIN")
+}

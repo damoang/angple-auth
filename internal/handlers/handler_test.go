@@ -1,11 +1,10 @@
 package handlers
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,7 +13,6 @@ import (
 	"github.com/damoang/angple-auth/internal/config"
 	"github.com/damoang/angple-auth/internal/database"
 	"github.com/damoang/angple-auth/internal/middleware"
-	"github.com/damoang/angple-auth/internal/models"
 	"github.com/damoang/angple-auth/testdata"
 	"github.com/damoang/angple-auth/utils"
 	"github.com/gofiber/fiber/v2"
@@ -37,7 +35,7 @@ func createMockNaverServer() *httptest.Server {
 	mux.HandleFunc("/v1/nid/me", func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader != "Bearer mock_access_token" {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(fiber.StatusUnauthorized)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"resultcode": "00", "message": "success", "response": {
@@ -66,7 +64,7 @@ func createMockGoogleServer() *httptest.Server {
 	mux.HandleFunc("/oauth2/v2/userinfo", func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader != "Bearer mock_access_token" {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(fiber.StatusUnauthorized)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"id": "123456789012345678901",
@@ -92,6 +90,7 @@ func TestMain(m *testing.M) {
 	utils.InitAppEnv()
 
 	config.InitProviders()
+	config.InitSessionStore()
 
 	c := testdata.SetupTestContainer(projectRoot)
 
@@ -108,9 +107,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func prepareAuthRouter(method string, path string, handlers ...fiber.Handler) *fiber.App {
-	app := fiber.New()
-
+func prepareAuthRouter(app *fiber.App, method string, path string, handlers ...fiber.Handler) *fiber.App {
 	auth := app.Group("/auth")
 
 	switch method {
@@ -124,7 +121,8 @@ func prepareAuthRouter(method string, path string, handlers ...fiber.Handler) *f
 }
 
 func TestAuth(t *testing.T) {
-	app := prepareAuthRouter("get", "/:provider", Auth)
+	app := fiber.New()
+	prepareAuthRouter(app, "get", "/:provider", Auth)
 
 	testCases := []struct {
 		name     string
@@ -144,12 +142,16 @@ func TestAuth(t *testing.T) {
 
 			t.Logf("resp: %v", resp)
 
-			assert.Equal(t, http.StatusFound, resp.StatusCode, "response code must be 302")
+			assert.Equal(t, fiber.StatusFound, resp.StatusCode, "response code must be 302")
 		})
 	}
 }
 
 func TestAuthCallback(t *testing.T) {
+	app := fiber.New()
+	prepareAuthRouter(app, "get", "/:provider", Auth)
+	prepareAuthRouter(app, "get", "/:provider/callback", AuthCallback)
+
 	testCases := []struct {
 		name             string
 		provider         string
@@ -158,12 +160,43 @@ func TestAuthCallback(t *testing.T) {
 		profilePath      string
 		createMockServer func() *httptest.Server
 	}{
-		{"naver", "naver", "/oauth2.0/authorize", "/oauth2.0/token", "/v1/nid/me", createMockNaverServer},
-		{"google", "google", "/o/oauth2/auth", "/token", "/oauth2/v2/userinfo", createMockGoogleServer},
+		{
+			name:             "naver",
+			provider:         "naver",
+			authPath:         "/oauth2.0/authorize",
+			tokenPath:        "/oauth2.0/token",
+			profilePath:      "/v1/nid/me",
+			createMockServer: createMockNaverServer,
+		},
+		{
+			name:             "google",
+			provider:         "google",
+			authPath:         "/o/oauth2/auth",
+			tokenPath:        "/token",
+			profilePath:      "/oauth2/v2/userinfo",
+			createMockServer: createMockGoogleServer,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			authReq := httptest.NewRequest("GET", fmt.Sprintf("/auth/%s?url=%s", tc.provider, "/free"), nil)
+			authResp, err := app.Test(authReq)
+			t.Logf("Auth resp: %v", authResp)
+			assert.NoError(t, err)
+			assert.Equal(t, fiber.StatusFound, authResp.StatusCode)
+
+			cookie := authResp.Header.Get("Set-Cookie")
+			t.Logf("Auth resp Cookie: %v", cookie)
+			location := authResp.Header.Get("Location")
+			t.Logf("Auth resp Location: %v", location)
+
+			redirectURL, err := url.Parse(location)
+			assert.NoError(t, err)
+			stateBase64 := redirectURL.Query().Get("state")
+			assert.NotEmpty(t, stateBase64)
+			t.Logf("stateBase64: %v", stateBase64)
+
 			server := tc.createMockServer()
 			defer server.Close()
 
@@ -186,31 +219,23 @@ func TestAuthCallback(t *testing.T) {
 				profileEndpoint.ProfileURL = originalProfileURL
 			}()
 
-			app := prepareAuthRouter("get", "/:provider/callback", AuthCallback)
+			callbackReq := httptest.NewRequest("GET", fmt.Sprintf("/auth/%s/callback?code=mock_code&state=%s", tc.provider, stateBase64), nil)
+			callbackReq.Header.Set("Cookie", cookie)
 
-			state := models.AuthState{
-				CSRFToken: "random_string",
-				ReturnTo:  fmt.Sprintf("http://localhost/%s/test_callback.php", tc.provider),
-			}
-			stateJSON, _ := json.Marshal(state)
-			stateBase64 := base64.URLEncoding.EncodeToString(stateJSON)
-
-			req := httptest.NewRequest("GET", fmt.Sprintf("/auth/%s/callback?code=mock_code&state=%s", tc.provider, stateBase64), nil)
-
-			resp, err := app.Test(req)
+			callbackResp, err := app.Test(callbackReq)
 			assert.NoError(t, err)
-			defer resp.Body.Close()
+			defer callbackResp.Body.Close()
 
-			t.Logf("resp: %v", resp)
+			t.Logf("Callback resp: %v", callbackResp)
 
-			assert.Equal(t, http.StatusFound, resp.StatusCode, "response code must be 302")
+			assert.Equal(t, fiber.StatusFound, callbackResp.StatusCode, "response code must be 302")
 		})
 	}
 }
 
 func TestAuthVerifyOk(t *testing.T) {
-
-	app := prepareAuthRouter("get", "/verify", middleware.Protected(), AuthVerify)
+	app := fiber.New()
+	prepareAuthRouter(app, "get", "/verify", middleware.Protected(), AuthVerify)
 
 	req := httptest.NewRequest("GET", "/auth/verify", nil)
 
@@ -237,11 +262,12 @@ func TestAuthVerifyOk(t *testing.T) {
 	authenticated := resp.Header.Get("X-Auth-Authenticated")
 	t.Logf("authenticated : %v", authenticated)
 	assert.Equal(t, "1", authenticated, "X-Auth-Authenticated header must be 1")
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "response code must be 200")
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode, "response code must be 200")
 }
 
 func TestAuthVerifyUnauthorized(t *testing.T) {
-	app := prepareAuthRouter("get", "/verify", middleware.Protected(), AuthVerify)
+	app := fiber.New()
+	prepareAuthRouter(app, "get", "/verify", middleware.Protected(), AuthVerify)
 
 	req := httptest.NewRequest("GET", "/auth/verify", nil)
 
@@ -253,7 +279,7 @@ func TestAuthVerifyUnauthorized(t *testing.T) {
 		t.Logf("resp: %v", resp)
 
 		assert.Equal(t, "0", resp.Header.Get("X-Auth-Authenticated"), "X-Auth-Authenticated header must be 0")
-		assert.Equal(t, http.StatusOK, resp.StatusCode, "response code must be 200")
+		assert.Equal(t, fiber.StatusOK, resp.StatusCode, "response code must be 200")
 	})
 
 	t.Run("wrongToken", func(t *testing.T) {
@@ -266,6 +292,6 @@ func TestAuthVerifyUnauthorized(t *testing.T) {
 
 		t.Logf("resp: %v", resp)
 		assert.Equal(t, "0", resp.Header.Get("X-Auth-Authenticated"), "X-Auth-Authenticated header must be 0")
-		assert.Equal(t, http.StatusOK, resp.StatusCode, "response code must be 200")
+		assert.Equal(t, fiber.StatusOK, resp.StatusCode, "response code must be 200")
 	})
 }

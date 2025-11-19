@@ -13,8 +13,8 @@ func main() {
 	godotenv.Load()
 
 	utils.InitAppEnv()
-
 	config.InitProviders()
+	config.InitSessionStore()
 
 	database.ConnectDB()
 
