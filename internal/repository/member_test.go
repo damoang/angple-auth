@@ -8,7 +8,6 @@ import (
 	"github.com/damoang/angple-auth/internal/database"
 	"github.com/damoang/angple-auth/testdata"
 	"github.com/damoang/angple-auth/utils"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
@@ -20,9 +19,9 @@ func TestMain(m *testing.M) {
 	wd, _ := os.Getwd()
 	projectRoot := filepath.Join(wd, "../..")
 
-	err := godotenv.Load(filepath.Join(projectRoot, ".env"))
-	if err != nil {
-		logger.Panic("TestMain: failed to load dotenv", zap.Error(err))
+	utils.InitAppEnv()
+	if err := utils.LoadConfig(filepath.Join(projectRoot, utils.DOTENV_DEV)); err != nil {
+		logger.Panic("TestMain", zap.NamedError("failed to load dotenv", err))
 	}
 
 	c := testdata.SetupTestContainer(projectRoot)
