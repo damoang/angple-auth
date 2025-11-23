@@ -40,11 +40,11 @@ var profileEndpoint = providers.ProfileEndpoint{
 	ProfileURL: PROFILE_URL,
 }
 
-func New() providers.Provider {
+func New(pConfig providers.Config) providers.Provider {
 	oauth2Conf := &oauth2.Config{
-		ClientID:     providers.GetClientID(GOOGLE_CLIENT_ID),
-		ClientSecret: providers.GetClientSecret(GOOGLE_CLIENT_SECRET),
-		RedirectURL:  providers.GetRedirectURL(GOOGLE_REDIRECT_URL),
+		ClientID:     pConfig.GetClientID(GOOGLE_CLIENT_ID),
+		ClientSecret: pConfig.GetClientSecret(GOOGLE_CLIENT_SECRET),
+		RedirectURL:  pConfig.GetRedirectURL(GOOGLE_REDIRECT_URL),
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",

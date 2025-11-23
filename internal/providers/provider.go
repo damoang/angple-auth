@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/damoang/angple-auth/internal/models"
-	"github.com/damoang/angple-auth/utils"
 	"golang.org/x/oauth2"
 )
 
@@ -18,26 +17,36 @@ type Provider interface {
 	FetchProfile(accessToken string) (*models.UnifiedProfile, error)
 }
 
-func GetClientID(envKey string) string {
-	if utils.IsDev() {
-		return os.Getenv(envKey)
-	}
-
-	panic("Not implemented")
+type Config interface {
+	GetClientID(envKey string) string
+	GetClientSecret(envKey string) string
+	GetRedirectURL(envKey string) string
 }
 
-func GetClientSecret(envKey string) string {
-	if utils.IsDev() {
-		return os.Getenv(envKey)
-	}
+type ProviderConfigDev struct{}
 
-	panic("Not implemented")
+func (p *ProviderConfigDev) GetClientID(envKey string) string {
+	return os.Getenv(envKey)
 }
 
-func GetRedirectURL(envKey string) string {
-	if utils.IsDev() {
-		return os.Getenv(envKey)
-	}
+func (p *ProviderConfigDev) GetClientSecret(envKey string) string {
+	return os.Getenv(envKey)
+}
 
-	panic("Not implemented")
+func (p *ProviderConfigDev) GetRedirectURL(envKey string) string {
+	return os.Getenv(envKey)
+}
+
+type ProviderConfigProd struct{}
+
+func (p *ProviderConfigProd) GetClientID(envKey string) string {
+	panic("Not Implemented")
+}
+
+func (p *ProviderConfigProd) GetClientSecret(envKey string) string {
+	panic("Not Implemented")
+}
+
+func (p *ProviderConfigProd) GetRedirectURL(envKey string) string {
+	panic("Not Implemented")
 }

@@ -43,11 +43,11 @@ var profileEndpoint = providers.ProfileEndpoint{
 	ProfileURL: PROFILE_URL,
 }
 
-func New() providers.Provider {
+func New(pConfig providers.Config) providers.Provider {
 	oauth2Conf := &oauth2.Config{
-		ClientID:     providers.GetClientID(NAVER_CLIENT_ID),
-		ClientSecret: providers.GetClientSecret(NAVER_CLIENT_SECRET),
-		RedirectURL:  providers.GetRedirectURL(NAVER_REDIRECT_URL),
+		ClientID:     pConfig.GetClientID(NAVER_CLIENT_ID),
+		ClientSecret: pConfig.GetClientSecret(NAVER_CLIENT_SECRET),
+		RedirectURL:  pConfig.GetRedirectURL(NAVER_REDIRECT_URL),
 		Scopes: []string{
 			"profile",
 			"email",
