@@ -6,13 +6,11 @@ import (
 	"github.com/damoang/angple-auth/internal/routes"
 	"github.com/damoang/angple-auth/utils"
 	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	godotenv.Load()
+	utils.InitEnv()
 
-	utils.InitAppEnv()
 	config.InitProviders()
 	config.InitSessionStore()
 

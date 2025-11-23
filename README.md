@@ -6,6 +6,7 @@ angple-auth 는 gnuboard 기반의 **ang-gnu** 에서 social login 을 분리하
 
 # Quick start
 ```bash
+copy .env.sample .env.dev
 go run cmd/main.go
 ```
 
