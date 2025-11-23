@@ -21,10 +21,11 @@ func jwtError(c *fiber.Ctx, err error) error {
 	logger := utils.GetLogger()
 	logger.Debug("jwtError: ", zap.String("err", err.Error()))
 
+	c.Set("X-Auth-Authenticated", "0")
 	if err.Error() == "missing or malformed JWT" {
-		return c.Status(fiber.StatusBadRequest).
+		return c.Status(fiber.StatusOK).
 			JSON(fiber.Map{"status": "error", "message": "Missing or malformed JWT", "data": nil})
 	}
-	return c.Status(fiber.StatusUnauthorized).
+	return c.Status(fiber.StatusOK).
 		JSON(fiber.Map{"status": "error", "message": "Invalid or expired JWT", "data": nil})
 }
