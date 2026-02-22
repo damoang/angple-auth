@@ -9,7 +9,7 @@ import (
 func SetupRoutes(app *fiber.App) {
 	auth := app.Group("/auth")
 
+	auth.Get("/verify", middleware.Protected(), handlers.AuthVerify)
 	auth.Get("/:provider", handlers.Auth)
 	auth.Get("/:provider/callback", handlers.AuthCallback)
-	auth.Get("/:provider/verify", middleware.Protected(), handlers.AuthVerify)
 }
